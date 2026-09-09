@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <title>阿曽みんなのたたら花火メーター</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <style>
+    :root {
+      --bg-dark: #0d1322;
+      --card-bg: rgba(22, 32, 54, 0.85);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --accent-gold: #ffb703;
+      --accent-orange: #fb8500;
+      --accent-fire: #e63946;
+      --text-main: #f8f9fa;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at 50% 10%, #1a2642 0%, var(--bg-dark) 100%);
+      color: var(--text-main);
+      padding: 24px 12px;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 580px;
+      margin: 0 auto;
+    }
+
+    /* お礼モーダル/バナー */
+    .thanks-banner {
+      background: linear-gradient(135deg, rgba(251, 133, 0, 0.2), rgba(255, 183, 3, 0.2));
+      border: 2px solid var(--accent-gold);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      animation: fadeInDown 0.6s ease;
+      backdrop-filter: blur(8px);
+    }
+    .thanks-banner h2 {
+      font-size: 1.25em;
+      color: var(--accent-gold);
+      margin-bottom: 8px;
+    }
+    .thanks-banner p {
+      font-size: 0.9em;
+      color: #fff;
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-wrapper {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--card-border);
+      margin-bottom: 24px;
+    }
+
+    .hero-img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .header-title {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .header-title h1 {
+      font-size: 1.45em;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, #fff, #fb8500, #ffb703);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .header-title .subtitle {
+      font-size: 0.85em;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .dashboard-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      margin-bottom: 24px;
+    }
+
+    .amounts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .amount-box {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .amount-box .label {
+      font-size: 0.75em;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .amount-box .value {
+      font-size: 1.25em;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .amount-box.current .value {
+      color: var(--accent-gold);
+    }
+
+    .amount-box .unit {
+      font-size: 0.75em;
+      margin-left: 2px;
+      font-weight: normal;
+    }
+
+    .meter-container {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .meter-bg {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      height: 22px;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      padding: 3px;
+    }
+
+    .meter-fill {
+      background: linear-gradient(90deg, #fb8500, #ffb703);
+      height: 100%;
+      border-radius: 999px;
+      transition: width 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: 0 0 12px rgba(255, 183, 3, 0.6);
+    }
+
+    .percent-badge {
+      display: flex;
+      justify-content: flex-end;
+      align-items: baseline;
+      gap: 4px;
+      font-weight: 700;
+      font-size: 0.9em;
+      color: var(--text-muted);
+    }
+
+    .percent-badge strong {
+      font-size: 1.5em;
+      font-weight: 900;
+      color: var(--accent-gold);
+    }
+
+    .donate-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: linear-gradient(135deg, #e63946, #d90429);
+      color: #ffffff;
+      padding: 16px 20px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-size: 1.1em;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      box-shadow: 0 6px 20px rgba(230, 57, 70, 0.4);
+      transition: all 0.25s ease;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .donate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(230, 57, 70, 0.6);
+      background: linear-gradient(135deg, #f24250, #e63946);
+    }
+
+    .message-board {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .message-board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .message-board-header h2 {
+      font-size: 1.05em;
+      font-weight: 700;
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .message-count {
+      font-size: 0.75em;
+      background: rgba(255, 183, 3, 0.15);
+      color: var(--accent-gold);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .message-list {
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message-list::-webkit-scrollbar {
+      width: 5px;
+    }
+    .message-list::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+    }
+    .message-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+
+    .message-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      padding: 14px 16px;
+      border-radius: 12px;
+    }
+
+    .message-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .message-name {
+      font-size: 0.85em;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .message-name span {
+      color: var(--text-muted);
+      font-weight: normal;
+      font-size: 0.85em;
+      margin-left: 2px;
+    }
+
+    .message-text {
+      font-size: 0.9em;
+      color: #e2e8f0;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .no-message {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85em;
+      padding: 24px 0;
+    }
+
+    .footer-link {
+      text-align: center;
+      margin-top: 32px;
+    }
+
+    .footer-link a {
+      color: var(--text-muted);
+      font-size: 0.8em;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-link a:hover {
+      color: #fff;
+    }
+    .message-name { overflow-wrap: anywhere; }
+    @media (max-width: 400px) { .dashboard-card, .message-board { padding: 16px; } .amount-box .value { font-size: 1.05em; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+<noscript>金額の更新にはJavaScriptを有効にしてください。</noscript>
+  <div class="container" id="meter-app" >
+    
+    <!-- ▼ 決済完了リダイレクト時の特別バナー ▼ -->
+    
+      <div class="thanks-banner" hidden>
+        <h2>🎇 ご支援ありがとうございました！ 🎇</h2>
+        <p id="thanks-status" role="status">ご支援ありがとうございます。反映状況を確認しています。<br>非公開のメッセージは表示されません。</p>
+      </div>
+
+    <!-- ▲ ここまで ▲ -->
+
+
+
+    <div class="hero-wrapper">
+      <img src="https://drive.google.com/thumbnail?id=1d2qMEL7X00Z13F0P_utcJlW4xaTLjQ9H&amp;sz=w800" alt="阿曽みんなのたたら花火" class="hero-img" id="hero-image">
+    </div>
+
+    <div class="header-title">
+      <h1>阿曽みんなのたたら花火</h1>
+      <div class="subtitle">Support Meter</div>
+    </div>
+
+    <div class="dashboard-card">
+      <div class="amounts-grid">
+        <div class="amount-box current">
+          <span class="label">現在の支援総額</span>
+          <div class="value"><span id="current-amount">—</span><span class="unit">円</span></div>
+        </div>
+        <div class="amount-box">
+          <span class="label">目標金額</span>
+          <div class="value"><span id="target-amount">—</span><span class="unit">円</span></div>
+        </div>
+      </div>
+
+      <div class="meter-container">
+        <div class="meter-bg" id="progress" role="progressbar" aria-label="目標達成率" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="meter-fill" class="meter-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="percent-badge">
+        達成率 <strong id="meter-percent">0</strong>%
+      </div>
+
+      <div style="margin-top: 24px;">
+        <a href="https://buy.stripe.com/test_cNi8wRgDX1evcP0gXWaAw00" class="donate-btn" target="_blank" rel="noopener noreferrer">
+          <span>🎆</span> オンラインで花火を応援する！
+        </a>
+      </div>
+    </div>
+
+    <div class="message-board">
+      <div class="message-board-header">
+        <h2><span>💬</span> 応援メッセージ</h2>
+        <span class="message-count" id="message-count">— 件</span>
+      </div>
+
+      <div class="message-list" id="message-list"><p class="no-message">読み込み中です。</p>
+      </div>
+    </div>
+
+    <p id="update-status" role="status" style="text-align:center;margin-top:16px;color:#94a3b8;font-size:.85em"></p>
+    <button id="refresh-button" type="button" style="display:block;margin:12px auto;padding:8px 16px">最新の状況を確認</button>
+    <div class="footer-link">
+      <a href="./info.html" target="_top">運営者情報・特定商取引法に基づく表記</a>
+    </div>
+
+  </div>
+<script src="./config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var root = document.getElementById('meter-app');
+  var query = new URLSearchParams(location.search);
+  var thanks = query.get('thanks') === '1', sessionId = query.get('session_id') || '';
+  document.querySelector('.thanks-banner').hidden = !thanks;
+  var attempts = 0, busy = false, timer, confirmed = false, requestId = 0;
+  var status = document.getElementById('update-status');
+  var images = [
+    '1d2qMEL7X00Z13F0P_utcJlW4xaTLjQ9H','1OtR0bJRRuwQrt9knzRimLl_d_L8LTE-H',
+    '1yj6DWLP14lq-DxJiU4LmyfEMa_FQbDPB','1s8cigu2-1d5K-Jpe3IBfXycbNRfOcBfR','127mFShIoIvGwaUA-mOwzvec0CNeEJViH'
+  ];
+  function render(data) {
+    if (!data || !Number.isSafeInteger(data.current) || data.current < 0 || !Number.isSafeInteger(data.target) || data.target < 0 || !Array.isArray(data.messages)) throw new Error('Invalid response');
+    var percent = data.target > 0 ? Math.max(0, Math.min(100, Math.floor(data.current * 100 / data.target))) : 0;
+    document.getElementById('current-amount').textContent = data.current.toLocaleString('ja-JP');
+    document.getElementById('target-amount').textContent = data.target.toLocaleString('ja-JP');
+    document.getElementById('meter-percent').textContent = percent;
+    document.getElementById('meter-fill').style.width = percent + '%';
+    document.getElementById('progress').setAttribute('aria-valuenow', percent);
+    var stage = percent >= 100 ? 4 : percent >= 99 ? 3 : percent >= 70 ? 2 : percent >= 30 ? 1 : 0;
+    var img = document.getElementById('hero-image'), url = 'https://drive.google.com/thumbnail?id=' + images[stage] + '&sz=w800';
+    if (img.src !== url) img.src = url;
+    var list = document.getElementById('message-list'), fragment = document.createDocumentFragment();
+    data.messages.forEach(function(message) {
+      var card=document.createElement('div'), name=document.createElement('div'), text=document.createElement('p');
+      card.className='message-card'; name.className='message-name'; text.className='message-text';
+      name.textContent=String(message.name || '未入力') + ' 様'; text.textContent=String(message.text || '');
+      card.appendChild(name); card.appendChild(text); fragment.appendChild(card);
+    });
+    if (!data.messages.length) { var empty=document.createElement('p'); empty.className='no-message'; empty.textContent='まだメッセージはありません。'; fragment.appendChild(empty); }
+    list.replaceChildren(fragment);
+    document.getElementById('message-count').textContent=data.messages.length + ' 件';
+    status.textContent=data.target > 0 ? '最新の状況を表示しています。' : '目標金額は準備中です。';
+    if (thanks && data.reflected === true && !confirmed) {
+      confirmed=true;
+      document.getElementById('thanks-status').textContent='ご支援金額が反映されました。非公開のメッセージは表示されません。ありがとうございます！';
+      if (typeof window.confetti === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        window.confetti({particleCount:120,spread:70,origin:{y:0.6},colors:['#ffb703','#fb8500','#e63946','#ffffff']});
+      }
+    }
+  }
+  function schedule() {
+    if (thanks && !confirmed && attempts >= 48) {
+      status.textContent='反映の確認に時間がかかっています。再度支払わず、しばらくして「最新の状況を確認」を押してください。';
+      return;
+    }
+    timer=setTimeout(refresh, thanks && !confirmed ? 2500 : 30000);
+  }
+  function refresh() {
+    if (busy) return;
+    clearTimeout(timer);
+    if (document.hidden) { timer=setTimeout(refresh,30000); return; }
+    busy=true; attempts++; var id=++requestId;
+    var watchdog=setTimeout(function(){ if(id!==requestId)return; requestId++; busy=false; status.textContent='通信がタイムアウトしました。再確認します。'; schedule(); },15000);
+    function finish(data,error) {
+      if (id!==requestId) return;
+      clearTimeout(watchdog); busy=false;
+      try { if(error) throw error; render(data); } catch (_) { status.textContent='最新情報を取得できませんでした。再確認します。'; }
+      schedule();
+    }
+    var endpoint = new URL(window.SITE_CONFIG.meterApi);
+    endpoint.searchParams.set('action','getData');
+    endpoint.searchParams.set('session_id',sessionId);
+    endpoint.searchParams.set('_',Date.now());
+    fetch(endpoint.href,{credentials:'omit',redirect:'follow'}).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json();}).then(function(data){finish(data);}).catch(function(error){finish(null,error);});
+  }
+  document.getElementById('refresh-button').addEventListener('click',function(){attempts=0;refresh();});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh();});
+  if (thanks && !sessionId) document.getElementById('thanks-status').textContent='ご支援ありがとうございます。このURLには決済の確認番号がないため、個別の反映完了は確認できません。最新の支援状況を表示します。';
+  refresh();
+})();
+</script>
+
+</body>
+</html>
