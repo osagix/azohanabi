@@ -485,7 +485,8 @@
     clearTimeout(timer);
     if (document.hidden && attempts > 0) { timer=setTimeout(refresh,30000); return; }
     busy=true; attempts++; var id=++requestId;
-    var watchdog=setTimeout(function(){ if(id!==requestId)return; requestId++; busy=false; status.textContent='通信がタイムアウトしました。再確認します。'; schedule(); },15000);
+    if (!cachedView) status.textContent='最新の支援状況を確認中です…';
+    var watchdog=setTimeout(function(){ if(id!==requestId)return; requestId++; busy=false; status.textContent='通信がタイムアウトしました。再確認します。'; schedule(); },45000);
     function finish(data,error) {
       if (id!==requestId) return;
       clearTimeout(watchdog); busy=false;
