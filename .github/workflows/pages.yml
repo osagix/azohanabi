@@ -1,0 +1,66 @@
+name: Publish meter with recent totals
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/configure-pages@v5
+      - name: Build public snapshot
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re, shutil, time, urllib.request
+          config = pathlib.Path('config.js').read_text()
+          endpoint = re.search(r'meterApi:\s*"([^"]+)"', config).group(1)
+          error = None
+          for attempt in range(3):
+              try:
+                  with urllib.request.urlopen(endpoint + '?action=getData', timeout=90) as response:
+                      data = json.load(response)
+                  for key in ('current', 'target'):
+                      assert type(data[key]) is int and 0 <= data[key] <= 9007199254740991
+                  assert isinstance(data['messages'], list)
+                  assert all(isinstance(m, dict) and isinstance(m.get('name'), str) and isinstance(m.get('text'), str) for m in data['messages'])
+                  break
+              except Exception as exc:
+                  error = exc
+                  if attempt == 2:
+                      raise
+                  time.sleep(5)
+          # Publish only fields already public; never persist payment confirmation.
+          public = {key: data[key] for key in ('current', 'target', 'messages')}
+          snapshot = json.dumps({'at': int(time.time()*1000), 'data': public}, ensure_ascii=True).replace('<', '\\u003c')
+          html = pathlib.Path('index.html').read_text()
+          marker = '/* SNAPSHOT */ null /* END SNAPSHOT */'
+          assert html.count(marker) == 1, 'Snapshot marker missing'
+          html = html.replace(marker, snapshot)
+          out = pathlib.Path('_site')
+          out.mkdir(exist_ok=True)
+          (out / 'index.html').write_text(html)
+          for name in ('config.js', 'info.html', '.nojekyll'):
+              shutil.copyfile(name, out / name)
+          print('Public snapshot built successfully')
+          PY
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
