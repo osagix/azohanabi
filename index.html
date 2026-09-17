@@ -418,6 +418,22 @@
       .section-inner { padding:58px 24px; }.story-grid,.support-options { grid-template-columns:1fr;gap:26px; }.pillars { grid-template-columns:1fr;gap:25px; }.pillar { display:grid;grid-template-columns:36px 1fr;column-gap:12px; }.pillar h3 { margin:3px 0 8px; }.pillar p { grid-column:2; }.support-head { display:block; }.support-option { padding:26px 22px; }.cash-times li { font-size:14px; }.goal-note { margin-top:20px; }
       #meter-app { padding:54px 16px; }.hero-actions a { padding:14px 18px; }
     }
+
+    .stage-panel { margin:30px 0 40px;padding:30px 22px;background:#182a40;border:1px solid #ac8951;border-radius:16px;text-align:center; }
+    .stage-panel .eyebrow { margin-bottom:12px; }
+    .stage-panel h3 { color:#ffda96;font-size:26px;margin-bottom:14px; }
+    .stage-intro { font-size:14px;color:#d5dfeb;line-height:1.9; }
+    .stage-current { display:inline-block;margin-top:22px;border-radius:30px;padding:8px 18px;background:#f1ba60;color:#15253a;font-size:14px;font-weight:700; }
+    #meter-app .stage-panel .hero-wrapper { max-width:520px;margin:18px auto 24px; }
+    .stage-steps { list-style:none;display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:0;padding:0; }
+    .stage-steps li { font-size:12px;color:#bac7d8; }
+    .stage-steps span { display:flex;align-items:center;justify-content:center;width:34px;height:34px;margin:0 auto 9px;border:1px solid #8292a6;border-radius:50%;font-weight:700; }
+    .stage-steps .reached span { background:#495742;color:#fff0c4;border-color:#b69c68; }
+    .stage-steps [aria-current="step"] span { background:#f1ba60;color:#15253a;border-color:#f1ba60;box-shadow:0 0 0 4px #efb45822; }
+    .stage-steps [aria-current="step"] { color:#ffe1a6;font-weight:700; }
+    .stage-next { color:#ffe0a1;font-size:17px;line-height:1.9;margin-top:25px;font-weight:700; }
+    .stage-note { color:#aebdce;font-size:11px;line-height:1.8;margin-top:14px; }
+    @media(max-width:400px) { .stage-panel { padding:24px 12px; }.stage-steps li { font-size:10px; }.stage-next { font-size:15px; } }
   </style>
 </head>
 <body>
@@ -486,6 +502,16 @@
     </div>
 
     <p id="update-status" role="status" style="text-align:center;margin-top:16px;color:#94a3b8;font-size:.85em"></p>
+    <section class="stage-panel" aria-labelledby="stage-heading">
+      <p class="eyebrow">みんなの応援で、絵が変わる。</p>
+      <h3 id="stage-heading">花火までの道のり</h3>
+      <p class="stage-intro">達成率に合わせて、イラストが5段階で変化します。<br>目標の100%で、最後のイラストへ。</p>
+      <p class="stage-current" id="stage-current">現在の段階を確認中…</p>
+      <div class="hero-wrapper"><img src="https://drive.google.com/thumbnail?id=1d2qMEL7X00Z13F0P_utcJlW4xaTLjQ9H&amp;sz=w800" alt="支援状況に合わせて変わるイラスト" class="hero-img" id="hero-image" loading="lazy" decoding="async"></div>
+      <ol class="stage-steps" aria-label="イラストが変わる達成率"><li id="stage-0"><span>1</span>スタート</li><li id="stage-1"><span>2</span>30%</li><li id="stage-2"><span>3</span>70%</li><li id="stage-3"><span>4</span>99%</li><li id="stage-4"><span>5</span>100%</li></ol>
+      <p class="stage-next" id="stage-next">次のイラストまでの金額を確認中です。</p>
+      <p class="stage-note">※イラストはイメージです。集計された支援総額に応じて切り替わります。</p>
+    </section>
     <div class="message-board">
       <div class="message-board-header">
         <h2><span>💬</span> 応援メッセージ</h2>
@@ -498,7 +524,7 @@
 
 
     <button id="refresh-button" type="button" style="display:block;margin:12px auto;padding:8px 16px">最新の状況を確認</button>
-    <div class="hero-wrapper"><img src="https://drive.google.com/thumbnail?id=1d2qMEL7X00Z13F0P_utcJlW4xaTLjQ9H&amp;sz=w800" alt="たたら製鉄と花火のイメージ" class="hero-img" id="hero-image" loading="lazy" decoding="async"><p class="meter-caption">みんなの応援とともに、花火のイメージが変わります。<br>※イラストはイメージです。</p></div>
+
     <div class="footer-link">
       <a href="./info.html" target="_top">運営者情報・特定商取引法に基づく表記</a>
     </div>
@@ -540,7 +566,16 @@
     document.getElementById('meter-fill').style.width = percent + '%';
     document.getElementById('progress').setAttribute('aria-valuenow', percent);
     var stage = percent >= 100 ? 4 : percent >= 99 ? 3 : percent >= 70 ? 2 : percent >= 30 ? 1 : 0;
+    var thresholds = [0,30,70,99,100];
+    document.getElementById('stage-current').textContent = '現在：' + (stage + 1) + ' / 5 段階（達成率 ' + percent + '%）';
+    thresholds.forEach(function(_,i){
+      var step = document.getElementById('stage-' + i);
+      step.className = i <= stage ? 'reached' : '';
+      step.setAttribute('aria-current', i === stage ? 'step' : 'false');
+    });
+    document.getElementById('stage-next').textContent = data.target <= 0 ? '目標金額の設定後に、次の段階をご案内します。' : stage === 4 ? '目標達成！最後のイラストになりました。応援ありがとうございます！' : '次のイラスト（' + thresholds[stage+1] + '%）まで、あと ' + Math.max(0,Math.ceil(data.target * thresholds[stage+1] / 100) - data.current).toLocaleString('ja-JP') + ' 円';
     var img = document.getElementById('hero-image'), url = 'https://drive.google.com/thumbnail?id=' + images[stage] + '&sz=w800';
+    img.alt = '支援達成率 ' + percent + '%：5段階のうち第' + (stage+1) + '段階のイラスト';
     if (img.src !== url) img.src = url;
     var list = document.getElementById('message-list'), fragment = document.createDocumentFragment();
     data.messages.forEach(function(message) {
